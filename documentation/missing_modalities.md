@@ -8,4 +8,3 @@ the result to the standard nnU‑Net network.
 
 Use the new components as follows:
 
-```bash

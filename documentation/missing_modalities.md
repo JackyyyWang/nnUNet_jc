@@ -9,9 +9,3 @@ the result to the standard nnU‑Net network.
 Use the new components as follows:
 
 ```bash
-nnUNetv2_plan_and_preprocess -d DATASET_ID -c CONFIGURATION -preprocessor_name MissingModalitiesPreprocessor
-nnUNetv2_train -d DATASET_ID -c CONFIGURATION -tr nnUNetTrainerModalityPrompt
-```
-
-Replace `DATASET_ID` and `CONFIGURATION` with your dataset and configuration name.
-

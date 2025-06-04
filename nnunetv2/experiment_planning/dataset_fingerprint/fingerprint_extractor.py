@@ -87,11 +87,45 @@ class DatasetFingerprintExtractor(object):
         return intensities_per_channel, intensity_statistics_per_channel
 
     @staticmethod
-    def analyze_case(image_files: List[str], segmentation_file: str, reader_writer_class: Type[BaseReaderWriter],
-                     num_samples: int = 10000):
+    def analyze_case(
+        image_files: List[str],
+        segmentation_file: str,
+        reader_writer_class: Type[BaseReaderWriter],
+        dataset_json: dict,
+        num_samples: int = 10000,
+    ):
         rw = reader_writer_class()
-        images, properties_images = rw.read_images(image_files)
+
+        num_modalities = len(
+            dataset_json.get("channel_names", dataset_json.get("modality"))
+        )
+
+        # map available image files to modality index based on the file suffix
+        file_map = {}
+        for f in image_files:
+            base = os.path.basename(f)
+            try:
+                idx = int(base.split("_")[-1].split(".")[0])
+            except ValueError:
+                continue
+            file_map[idx] = f
+
+        assert 0 in file_map, "T2 modality (_0000) must be present for every case"
+
+        img0, properties_images = rw.read_images((file_map[0],))
         segmentation, properties_seg = rw.read_seg(segmentation_file)
+        shape = img0.shape[1:]
+
+        images_list = [img0.astype(np.float32, copy=False)]
+        for m in range(1, num_modalities):
+            if m in file_map:
+                img, _ = rw.read_images((file_map[m],))
+                img = img.astype(np.float32, copy=False)
+            else:
+                img = np.zeros((1, *shape), dtype=np.float32)
+            images_list.append(img)
+
+        images = np.vstack(images_list)
 
         # we no longer crop and save the cropped images before this is run. Instead we run the cropping on the fly.
         # Downside is that we need to do this twice (once here and once during preprocessing). Upside is that we don't
@@ -130,9 +164,20 @@ class DatasetFingerprintExtractor(object):
             r = []
             with multiprocessing.get_context("spawn").Pool(self.num_processes) as p:
                 for k in self.dataset.keys():
-                    r.append(p.starmap_async(DatasetFingerprintExtractor.analyze_case,
-                                             ((self.dataset[k]['images'], self.dataset[k]['label'], reader_writer_class,
-                                               num_foreground_samples_per_case),)))
+                    r.append(
+                        p.starmap_async(
+                            DatasetFingerprintExtractor.analyze_case,
+                            (
+                                (
+                                    self.dataset[k]["images"],
+                                    self.dataset[k]["label"],
+                                    reader_writer_class,
+                                    self.dataset_json,
+                                    num_foreground_samples_per_case,
+                                ),
+                            ),
+                        )
+                    )
                 remaining = list(range(len(self.dataset)))
                 # p is pretty nifti. If we kill workers they just respawn but don't do any work.
                 # So we need to store the original pool of workers.

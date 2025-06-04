@@ -102,6 +102,7 @@ Additional information:
 - [Intensity Normalization in nnU-Net](documentation/explanation_normalization.md)
 - [Manually editing nnU-Net configurations](documentation/explanation_plans_files.md)
 - [Extending nnU-Net](documentation/extending_nnunet.md)
+- [Handling Missing Modalities](documentation/missing_modalities.md)
 - [What is different in V2?](documentation/changelog.md)
 
 Competitions:
